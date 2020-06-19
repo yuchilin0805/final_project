@@ -29,24 +29,25 @@ void straight(){
     car.goStraight(150);
     while(1){
         //pc.printf("%f\r\n",encoder1.get_cm());
-        if(encoder0.get_cm()*1.066667>90.5){
+        if(encoder0.get_cm()*1.066667>120){
             car.stop();
-            pc.printf("%f\r\n",encoder0.get_cm());
-            pc.printf("%f\r\n",encoder1.get_cm());
+            //pc.printf("%f\r\n",encoder0.get_cm());
+            //pc.printf("%f\r\n",encoder1.get_cm());
             break;
         }
         /*if(encoder1.get_cm()*1.067>90.5){
             car.stop();
             break;
         }*/
-        if((float)ping1>20) led1 = 1;
+        //pc.printf("%f\r\n",(float)ping1);
+        if((float)ping1>25) led1 = 1;
         else{
             led1 = 0;
             car.stop();
             break;
         }
-        wait(.01);
-     
+        wait(0.1);
+
     } 
 }
 void right(){
@@ -55,13 +56,37 @@ void right(){
     car.stop();
 }
 void left(){
-    car.turn(150,0.3);
-    wait(3);
+    car.turn(80,0.25);
+    wait(1);
+    car.turn(110,0.25);
+    //wait(1.2);
+    while(1){
+        if((float)ping1>50 &&(float)ping1<110){
+            led1 = 0;
+            car.stop();
+            break;
+        } 
+        else{
+           led1 = 1; 
+        }
+        wait(0.2);
+    }
     car.stop();
 }
 void reverseleft(){
-    car.turn(-150,0.3);
-    wait(3);
+    car.turn(-80,0.22);
+    wait(0.9);
+    car.turn(-120,0.23);
+    wait(1.4);
+    /*while(1){
+        if((float)ping1>20) led1 = 1;
+        else{
+            led1 = 0;
+            car.stop();
+            break;
+        }
+        wait(.01);
+    }*/
     car.stop();
 }
 void creepcw(){
@@ -87,14 +112,14 @@ void calib(){
             
             if(buff[i]=='\r'){
                 uart.getc();
-                pc.putc('\r\n');
+                //pc.putc('\r\n');
                 //buff[i]='\0';
                 char tmp[i-1];
                 for(int j=0;j<i-1;j++){
                     tmp[j]=buff[j];
                 }
                 angle=atof(tmp);
-                pc.printf("%f",angle);
+                //pc.printf("%f",angle);
                 if(angle<=3 || angle>=357){
                     break;
                 }
@@ -127,6 +152,7 @@ void reverseparking(){
     }
     reverseleft();
     car.goStraight(-150);
+    wait(2);
     while(1){
         if((float)ping1>51) led1 = 1;
         else{
@@ -143,14 +169,14 @@ void send_thread(){
          char s[21];
          sprintf(s,"image_classification");
          uart.puts(s);
-         pc.printf("send\r\n");
-         wait(1);
+         //pc.printf("send\r\n");
+         wait(2);
       }
       else if(sendmode ==2){
         char s[4];
         sprintf(s,"data");
         uart.puts(s);
-        pc.printf("send\r\n");
+        //pc.printf("send\r\n");
         wait(2);
         //  break;
       }
@@ -172,7 +198,7 @@ void mission1(){
                 break;
             }
                 
-            pc.putc(recv);
+            //pc.putc(recv);
             /*if(recv!='o' &&recv!='\r'&& recv!='\n'){
                 pc.printf("recv %c",recv);
                 image=int(recv)-48;
@@ -182,7 +208,7 @@ void mission1(){
    }
    if(image>10)
         image=-1;
-   pc.printf("%d",image);
+   //pc.printf("%d",image);
    sendmode=0;
 }
 int main() {
@@ -190,12 +216,14 @@ int main() {
     encoder0.reset();
     encoder1.reset();
     thread1.start(send_thread);
-    calib();
-    mission1();
-    //straight();
-    //wait(5);
-    //left();    
-
+    //calib();
+    //mission1();
+    straight();
+    wait(0.5);
+    left();
+    wait(3);
+   // reverseleft();    
+    reverseparking();
 
     car.stop();
 }
