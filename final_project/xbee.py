@@ -1,7 +1,7 @@
 import serial
 import paho.mqtt.client as paho
 import time
-"""
+
 mqttc = paho.Client()
 # Settings for connection
 host = "localhost"
@@ -31,10 +31,10 @@ mqttc.on_unsubscribe = on_unsubscribe
 print("Connecting to " + host + "/" + topic)
 mqttc.connect(host, port=1883, keepalive=60)
 mqttc.subscribe(topic, 0)
-"""
+
 
 # XBee setting
-serdev = '/dev/ttyUSB1'
+serdev = '/dev/ttyUSB0'
 s = serial.Serial(serdev, 9600)
 print("ok")
 while(1):
@@ -52,8 +52,8 @@ while(1):
                 break
             buf+=get.decode()
     print(buf)
-    #mesg=x+y
-    #mqttc.publish(topic,mesg)
+    mesg=buf
+    mqttc.publish(topic,mesg)
 
 
 s.close()

@@ -2,8 +2,9 @@
 #include "bbcar.h"
 
 Thread thread1;
-Thread xbeethread;
+Thread xbeethread(osPriorityHigh);
 EventQueue xbeequeue(32 * EVENTS_EVENT_SIZE);
+EventQueue sendqueue(32 * EVENTS_EVENT_SIZE);
 Ticker servo_ticker;
 Ticker encoder_ticker;
 Ticker encoder_ticker2;
@@ -21,10 +22,12 @@ RawSerial pc(USBTX, USBRX);
 RawSerial xbee(D12, D11);
 BBCar car(pin8, pin9, servo_ticker);
 int nowdir=0; //0:+x 1:-x 2:+y 3:-y
-int sendmode;
+int sendmode=0;
 float angle=-1;
 int image=-1;
-int nowstatus=0; //0 straight 1 left 2 right  4 reverseparking 5 datamatrice 6 mission1
+int nowstatus=0; //0 straight 1 left 2 right  4 reverseparking 5 datamatrice 6 mission1 7 mission2 8 idle
+int shape=0;
+float last_encoder=0; 
 class position{
     public:
         position(float a,float b){
@@ -36,17 +39,11 @@ class position{
 };
 position pos_now(25,25);
 void straight(){
+    nowstatus=0;
     car.goStraight(150);
+    last_encoder=0;
     while(1){
-        //pc.printf("%f\r\n",encoder1.get_cm());
-        if(nowdir==0)
-            pos_now.x+=encoder0.get_cm();
-        else if(nowdir==1)
-            pos_now.x-=encoder0.get_cm();
-        else if(nowdir==2)
-            pos_now.y+=encoder0.get_cm();
-        else if(nowdir==3)
-            pos_now.y-=encoder0.get_cm();
+        //pc.printf("%f\r\n",pos_now.x);
         if(encoder0.get_cm()*1.066667>120){
             car.stop();
             //pc.printf("%f\r\n",encoder0.get_cm());
@@ -58,8 +55,8 @@ void straight(){
             break;
         }*/
         //pc.printf("%f\r\n",(float)ping1);
-        if((float)ping1>25) led1 = 1;
-        else if(encoder0.get_cm()*1.0667>100){
+        if((float)ping1>30) led1 = 1;
+        else /*if(encoder0.get_cm()*1.0667>100)*/{
             led1 = 0;
             car.stop();
             break;
@@ -69,34 +66,29 @@ void straight(){
     } 
 }
 void right(){
-    if(nowdir==0)
-        nowdir=3;
-    else if(nowdir==1)
-        nowdir=2;
-    else if(nowdir==2)
-        nowdir=0;
-    else if(nowdir==3)
-        nowdir=1;
-    car.turn(150,-0.3);
-    wait(3);
+    encoder0.reset();
+    encoder1.reset();
+    nowstatus=2;
+    car.turn(80,-0.2);
+    while(encoder0.get_cm()<24){
+        wait(0.01);
+    }
     car.stop();
 }
 void left(){
-    if(nowdir==0)
-        nowdir=2;
-    else if(nowdir==1)
-        nowdir=3;
-    else if(nowdir==2)
-        nowdir=1;
-    else if(nowdir==3)
-        nowdir=0;
-    
-    car.turn(70,1);
-    //wait(1.8);
+    encoder0.reset();
+    encoder1.reset();
+    nowstatus=1;
+    car.turn(80,0.2);
+    while(encoder1.get_cm()<20){
+        wait(0.01);
+    }
+
     /*car.turn(110,0.8);
-    wait(1.2);*/
+    wait(1.2);*/    
+
     
-    while(1){
+    /*while(1){
         pos_now.y+=encoder1.get_cm();
         if((float)ping1>90 &&(float)ping1<170){
             led1 = 0;
@@ -107,12 +99,16 @@ void left(){
            led1 = 1; 
         }
         wait(0.01);
-    }
+    }*/
     car.stop();
 }
 void reverseleft(){
-    car.turn(-80,0.3);
-    wait(2);
+    encoder0.reset();
+    encoder1.reset();
+    car.turn(-80,0.2);
+    while(encoder1.get_cm()<24){
+        wait(0.01);
+    }
     /*car.turn(-120,0.23);
     wait(1.09);*/
     /*while(1){
@@ -181,10 +177,11 @@ void calib(){
 }
 
 void reverseparking(){
+    nowstatus=4;
     car.goStraight(120);
     while(1){
-        if((float)ping1>30) led1 = 1;
-        else if(encoder0.get_cm()>80){
+        if((float)ping1>20) led1 = 1;
+        else /*if(encoder0.get_cm()>80)*/{
             led1 = 0;
             car.stop();
             break;
@@ -203,6 +200,7 @@ void reverseparking(){
         }
         wait(.01);
     }
+    nowstatus=8;
 }
 void send_thread(){
    while(1){
@@ -235,7 +233,7 @@ void mission1(){
             char recv = uart.getc();
             if(!flag){
                 buff=recv;
-                pc.printf("buff %c",buff);
+               // pc.printf("buff %c",buff);
                 image=(int)buff-48;
                 break;
             }
@@ -253,27 +251,123 @@ void mission1(){
    //pc.printf("%d",image);
    sendmode=0;
    wait(3);
-   nowstatus=0;
+   nowstatus=8;
+}
+void leaving_mission1(){
+    car.goStraight(120);
+    while(1){
+        if((float)ping1>30) led1 = 1;
+        else{
+            led1 = 0;
+            car.stop();
+            break;
+        }
+        wait(.01);
+    }
+    wait(0.5);
+    right();
+    car.goStraight(120);
+    while(1){
+        if((float)ping1>51) led1 = 1;
+        else{
+            led1 = 0;
+            car.stop();
+            break;
+        }
+        wait(.01);
+    }
+    wait(0.5);
+    right();
+    car.goStraight(120);
+    while(1){
+        if((float)ping1>30) led1 = 1;
+        else{
+            led1 = 0;
+            car.stop();
+            break;
+        }
+        wait(.01);
+    }
+    right();
+}
+void moveright(){
+    pc.printf("right");
+    wait(2);
+}
+void moveleft(){
+    pc.printf("left");
+    wait(2);
+}
+void mission2(){
+    nowstatus=7;
+    car.goStraight(120);
+    while(1){
+        if((float)ping1>44) led1 = 1;
+        else{
+            led1 = 0;
+            car.stop();
+            break;
+        }
+        wait(.01);
+    }
+    right();
+    float firstcheck[10],rightcheck[10],leftcheck[10];
+    for(int i=0;i<10;i++){
+        firstcheck[i]=(float)ping1;
+        wait(0.01);
+    }
+    moveright();
+    for(int i=0;i<10;i++){
+        rightcheck[i]=(float)ping1;
+        wait(0.01);
+    }
+    moveleft();
+    for(int i=0;i<10;i++){
+        leftcheck[i]=(float)ping1;
+        wait(0.01);
+    }
+    int square=0;
+    for(int i=0;i<10;i++){
+        if(firstcheck[i]-rightcheck[i]<1){
+            square++;
+        }
+    }
+    for(int i=0;i<10;i++){
+        if(firstcheck[i]-leftcheck[i]<1){
+            square++;
+        }
+    }
+    if(square>15){
+        pc.printf("square");
+    }
+
+
+}
+void to_mission1(){
+    straight();
+    encoder0.reset();
+    wait(0.5);
+    //calib();
+    encoder0.reset();
+    encoder1.reset();
+    left();
+    encoder0.reset();
+    wait(3);  
+    reverseparking();
 }
 void sendpos(){
     
     if(nowstatus==0){
-        pc.printf("x:%1.2f y:%1.2f\r\n",pos_now.x,pos_now.y);
-        char xout[5],yout[5];
-        sprintf(xout,"%1.2f",pos_now.x);
-        sprintf(yout,"%1.2f",pos_now.y);
-        xbee.printf("$(%s,%s)#",xout,yout);
-        /*if(pos_now.x<100)
-            xbee.printf("$(0%s,",xout);
-        else 
-            xbee.printf("$(%s,",xout);
-        if(pos_now.y<100)
-            xbee.printf("0%s)#",yout);
-        else 
-            xbee.printf("%s)#",yout);*/
+        xbee.printf("$straight#");
     }
     else if(nowstatus==1){
-
+        xbee.printf("$left#");
+    }
+    else if(nowstatus==2){
+        xbee.printf("$right#");
+    }
+    else if(nowstatus==4){
+        xbee.printf("$reverse_parking#");
     }
     else if(nowstatus==5){
         char buff[5];
@@ -285,14 +379,14 @@ void sendpos(){
             sprintf(buff,"00%1.1f",angle);
         }
         if(angle!=-1){
-            xbee.printf("$%s#",buff);
+            xbee.printf("$angle:%s#",buff);
         }
 
     }
     else if(nowstatus==6){
         if(image!=-1){
             char buff[3];
-            sprintf(buff,"$%d#",image);
+            sprintf(buff,"$image:%d#",image);
             xbee.printf("%s",buff);
         }
 
@@ -307,20 +401,15 @@ int main() {
     pc.baud(9600);
     encoder0.reset();
     encoder1.reset();
-    thread1.start(send_thread);
+    thread1.start(callback(&sendqueue, &EventQueue::dispatch_forever));
+    sendqueue.call(send_thread);
     xbeethread.start(callback(&xbeequeue, &EventQueue::dispatch_forever));
     xbeequeue.call_every(1000,sendpos);
-    wait(5);
-    //calib();
-    mission1();
+    to_mission1();
+    //mission1();
+    leaving_mission1();
+    //wait(5);
     //straight();
-    encoder0.reset();
-    wait(0.5);
-    //left();
-    encoder0.reset();
-    wait(3);
-   // reverseleft();    
-    //reverseparking();
-
+    //mission2();
     car.stop();
 }
