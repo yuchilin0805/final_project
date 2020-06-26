@@ -43,14 +43,14 @@ while(1):
     y=s.read(6)
     print("y:",y.decode())"""
     buf=""
-    get=s.read(1)
+    get=(s.read(1)).decode('utf-8',errors='ignore')
     #print(get.decode())
-    if get.decode()=='$':
+    if get=='$':
         while(1):
-            get=s.read(1)
-            if get.decode()=='#':
+            get=(s.read(1)).decode('utf-8',errors='ignore')
+            if get=='#':
                 break
-            buf+=get.decode()
+            buf+=get
     print(buf)
     mesg=buf
     mqttc.publish(topic,mesg)
