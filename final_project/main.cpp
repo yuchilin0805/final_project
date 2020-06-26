@@ -25,7 +25,7 @@ int nowdir=0; //0:+x 1:-x 2:+y 3:-y
 int sendmode=0;
 float angle=-1;
 int image=-1;
-int nowstatus=0; //0 straight 1 left 2 right  4 reverseparking 5 datamatrice 6 mission1 7 mission2 8 idle
+int nowstatus=0; //0 straight 1 left 2 right  4 reverseparking 5 datamatrice 6 mission1 7 mission2 8 idle 9 end
 int shape=0;
 float last_encoder=0; 
 class position{
@@ -64,6 +64,8 @@ void straight(){
         wait(0.05);
 
     } 
+    /*nowstatus=9;
+    wait(2);*/
 }
 void right(){
     encoder0.reset();
@@ -310,35 +312,68 @@ void mission2(){
         }
         wait(.01);
     }
-    right();
+   // right();
     float firstcheck[10],rightcheck[10],leftcheck[10];
     for(int i=0;i<10;i++){
         firstcheck[i]=(float)ping1;
-        wait(0.01);
+        wait(0.2);
     }
     moveright();
     for(int i=0;i<10;i++){
         rightcheck[i]=(float)ping1;
-        wait(0.01);
+        wait(0.2);
     }
     moveleft();
     for(int i=0;i<10;i++){
         leftcheck[i]=(float)ping1;
-        wait(0.01);
+        wait(0.2);
     }
     int square=0;
+    int isosceles=0;
+    int symmetry=0; //1 triangle  2 insidetriangle 3 isosceles
     for(int i=0;i<10;i++){
         if(firstcheck[i]-rightcheck[i]<1){
             square++;
+        }
+        if(rightcheck[i]-leftcheck[i]>3){
+            symmetry=-1;
         }
     }
     for(int i=0;i<10;i++){
         if(firstcheck[i]-leftcheck[i]<1){
             square++;
         }
+        /*if(rightcheck[i]-leftcheck[i]>5){
+            isosceles++;
+        }*/
+        if(symmetry=-1){
+            if(firstcheck[i]-rightcheck[i]<0&&firstcheck[i]-leftcheck[i]<0){
+                symmetry=1;
+            }
+            else if(firstcheck[i]-rightcheck[i]>0&&firstcheck[i]-leftcheck[i]>0){
+                symmetry=2;
+            }
+            else {
+                symmetry=3;
+            }
+        }
+        
     }
+    int issquare=0;
     if(square>15){
         pc.printf("square");
+        issquare=1;
+    }
+    if(!issquare){
+        if(symmetry==1){
+            pc.printf("triangle");
+        }
+        else if(symmetry==2){
+            pc.printf("insidetriangle");
+        }
+        else{
+            pc.printf("isosceles");
+        } 
     }
 
 
@@ -391,6 +426,9 @@ void sendpos(){
         }
 
     }
+    else if(nowstatus==9){
+        xbee.printf("$end#");
+    }
     
     
     
@@ -405,11 +443,11 @@ int main() {
     sendqueue.call(send_thread);
     xbeethread.start(callback(&xbeequeue, &EventQueue::dispatch_forever));
     xbeequeue.call_every(1000,sendpos);
-    to_mission1();
+    //to_mission1();
     //mission1();
-    leaving_mission1();
+    //leaving_mission1();
     //wait(5);
     //straight();
-    //mission2();
+    mission2();
     car.stop();
 }
