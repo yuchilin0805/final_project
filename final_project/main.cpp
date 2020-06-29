@@ -61,7 +61,7 @@ void straight(){
         }*/
         //pc.printf("%f\r\n",(float)ping1);
         if((float)ping1>30) led1 = 1;
-        else /*if(encoder0.get_cm()*1.0667>100)*/{
+        else if(encoder0.get_cm()*1.0667>100){
             led1 = 0;
             car.stop();
             break;
@@ -245,6 +245,14 @@ void send_thread(){
    }
 }
 void mission1(){
+    car.gostraight(120);
+    wait(1);
+    car.turn(100,-0.2);
+    while(encoder0.get_cm()<12){
+        wait(0.01);
+    }
+    car.stop();
+    reverseleft();
     int flag=0;
     blinks=1;
     char buff;
@@ -292,24 +300,27 @@ void leaving_mission1(){
     }
     wait(0.5);
     right();
+    wait(1);
     nowstatus=0;
     car.goStraight(120);
+    encoder0.reset();
     while(1){
         if((float)ping1>51) led1 = 1;
-        else{
+        else if(encoder0.get_cm()*1.0667>40){
             led1 = 0;
             car.stop();
             break;
         }
-        wait(.01);
+        wait(0.01);
     }
     wait(0.5);
     right();
     nowstatus=0;
     car.goStraight(120);
+    encoder0.reset();
     while(1){
         if((float)ping1>30) led1 = 1;
-        else{
+        else if(encoder0.get_cm()*1.0667>80){
             led1 = 0;
             car.stop();
             break;
@@ -332,17 +343,18 @@ void mission2(){
 
     blinks=1;
     car.goStraight(120);
+    encoder0.reset();
     while(1){
         //pc.printf("%1.3f\r\n",(float)ping1);
         if((float)ping1>42) led1 = 1;
-        else{
+        else if(encoder0.get_cm()*1.0667>40){
             led1 = 0;
             car.stop();
             break;
         }
         wait(.01);
     }
-   // right();
+    right();
     float firstcheck[10],rightcheck[10],leftcheck[10];
     for(int i=0;i<10;i++){
         firstcheck[i]=(float)ping1;
